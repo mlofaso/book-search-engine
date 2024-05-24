@@ -18,7 +18,7 @@ type Book {
 
 type Auth {
     token: ID
-    user: String
+    user: User
 }
 
 input BookData {

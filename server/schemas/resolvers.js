@@ -4,7 +4,7 @@ const { signToken, AuthenticationError } = require("../utils/auth");
 
 const resolvers = {
   Query: {
-    me: async () => {
+    me: async (parent, args, context) => {
       if (context.user) {
         return User.findOne({ _id: context.user._id });
       }
@@ -13,31 +13,51 @@ const resolvers = {
   },
   Mutation: {
     addUser: async (parent, args) => {
-        const user = await User.create(args);
-        const token = signToken(user);
+      const user = await User.create(args);
+      const token = signToken(user);
+      return { token, user };
     },
 
-    login: async (parent, {email, password}) => {
-        const login = await User.findOne({email});
-        if (!login) {
-            throw AuthenticationError;
-          }
-    
-          const correctPw = await login.isCorrectPassword(password);
-    
-          if (!correctPw) {
-            throw AuthenticationError;
-          }
-    
-          const token = signToken(login);
-          return { token, login };
-        },
-    }
+    login: async (parent, { email, password }) => {
+      const user = await User.findOne({ email });
+      if (!user) {
+        throw AuthenticationError;
+      }
 
-    saveBook 
+      const correctPw = await user.isCorrectPassword(password);
 
-    removeBook
-  }
+      if (!correctPw) {
+        throw AuthenticationError;
+      }
+
+      const token = signToken(user);
+      return { token, user };
+    },
+
+    saveBook: async (parent, { bookData }, context) => {
+      if (context.user) {
+        return User.findOneAndUpdate(
+          { _id: context.user._id },
+          { $addToSet: { savedBooks: bookData } },
+          { new: true, runValidators: true }
+        );
+      }
+
+      throw AuthenticationError;
+    },
+
+    removeBook: async (parent, { bookId }, context) => {
+      if (context.user) {
+        return User.findOneAndUpdate(
+          { _id: context.user._id },
+          { $pull: { savedBooks: { bookId } } },
+          { new: true, runValidators: true }
+        );
+      }
+
+      throw AuthenticationError;
+    },
+  },
 };
 
-module.exports =  resolvers
+module.exports = resolvers;
